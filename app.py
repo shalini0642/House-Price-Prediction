@@ -1,53 +1,92 @@
+import os
+import subprocess
 import streamlit as st
 import joblib
 import pandas as pd
 import matplotlib.pyplot as plt
 
-# ----------------------------
+# --------------------------------------------------
 # Page Configuration
-# ----------------------------
+# --------------------------------------------------
 st.set_page_config(
     page_title="House Price Prediction",
     page_icon="🏠",
     layout="wide"
 )
 
-# ----------------------------
-# Load Files
-# ----------------------------
+# --------------------------------------------------
+# Generate model files if they don't exist
+# --------------------------------------------------
+required_files = [
+    "model.pkl",
+    "metrics.pkl",
+    "predictions.pkl"
+]
+
+if not all(os.path.exists(file) for file in required_files):
+    with st.spinner("Training model for the first time..."):
+        subprocess.run(["python", "train.py"], check=True)
+
+# --------------------------------------------------
+# Load model and data
+# --------------------------------------------------
 model = joblib.load("model.pkl")
 metrics = joblib.load("metrics.pkl")
 predictions = joblib.load("predictions.pkl")
 
-# ----------------------------
+# --------------------------------------------------
 # Title
-# ----------------------------
+# --------------------------------------------------
 st.title("🏠 House Price Prediction")
 
-st.write(
-    """
-Predict California house prices using a Machine Learning model trained with
-Linear Regression.
-"""
+st.markdown("""
+Predict California house prices using a **Machine Learning** model trained with
+**Linear Regression**.
+""")
+
+st.divider()
+
+# --------------------------------------------------
+# Sidebar
+# --------------------------------------------------
+st.sidebar.header("🏡 House Details")
+
+MedInc = st.sidebar.slider(
+    "Median Income", 0.0, 15.0, 3.0, 0.1,
+    help="Median income in the block."
 )
 
-# ----------------------------
-# Sidebar Inputs
-# ----------------------------
-st.sidebar.header("🏠 Enter House Details")
+HouseAge = st.sidebar.slider(
+    "House Age", 1.0, 60.0, 20.0, 1.0
+)
 
-MedInc = st.sidebar.number_input("Median Income", value=3.0)
-HouseAge = st.sidebar.number_input("House Age", value=20.0)
-AveRooms = st.sidebar.number_input("Average Rooms", value=5.0)
-AveBedrms = st.sidebar.number_input("Average Bedrooms", value=1.0)
-Population = st.sidebar.number_input("Population", value=1000.0)
-AveOccup = st.sidebar.number_input("Average Occupancy", value=3.0)
-Latitude = st.sidebar.number_input("Latitude", value=34.0)
-Longitude = st.sidebar.number_input("Longitude", value=-118.0)
+AveRooms = st.sidebar.slider(
+    "Average Rooms", 1.0, 15.0, 5.0, 0.1
+)
 
-# ----------------------------
-# Metrics
-# ----------------------------
+AveBedrms = st.sidebar.slider(
+    "Average Bedrooms", 0.5, 5.0, 1.0, 0.1
+)
+
+Population = st.sidebar.slider(
+    "Population", 100, 10000, 1000, 100
+)
+
+AveOccup = st.sidebar.slider(
+    "Average Occupancy", 1.0, 10.0, 3.0, 0.1
+)
+
+Latitude = st.sidebar.slider(
+    "Latitude", 32.0, 42.0, 34.0, 0.1
+)
+
+Longitude = st.sidebar.slider(
+    "Longitude", -125.0, -114.0, -118.0, 0.1
+)
+
+# --------------------------------------------------
+# Model Metrics
+# --------------------------------------------------
 st.subheader("📊 Model Performance")
 
 col1, col2 = st.columns(2)
@@ -55,14 +94,16 @@ col1, col2 = st.columns(2)
 col1.metric("R² Score", f"{metrics['r2']:.3f}")
 col2.metric("Mean Absolute Error", f"{metrics['mae']:.3f}")
 
-# ----------------------------
+st.divider()
+
+# --------------------------------------------------
 # Prediction
-# ----------------------------
+# --------------------------------------------------
 st.subheader("💰 Predict House Price")
 
 if st.button("Predict Price"):
 
-    data = pd.DataFrame(
+    input_data = pd.DataFrame(
         [[
             MedInc,
             HouseAge,
@@ -76,20 +117,20 @@ if st.button("Predict Price"):
         columns=metrics["feature_names"]
     )
 
-    prediction = model.predict(data)[0]
+    prediction = model.predict(input_data)[0]
 
     st.success(
         f"🏡 Estimated House Price: **${prediction * 100000:,.2f}**"
     )
 
-# ----------------------------
-# Graph
-# ----------------------------
 st.divider()
 
+# --------------------------------------------------
+# Visualization
+# --------------------------------------------------
 st.subheader("📈 Actual vs Predicted Prices")
 
-fig, ax = plt.subplots(figsize=(6, 6))
+fig, ax = plt.subplots(figsize=(7, 5))
 
 ax.scatter(
     predictions["actual"],
@@ -97,7 +138,6 @@ ax.scatter(
     alpha=0.5
 )
 
-# Ideal prediction line
 min_val = min(predictions["actual"])
 max_val = max(predictions["actual"])
 
@@ -105,25 +145,41 @@ ax.plot(
     [min_val, max_val],
     [min_val, max_val],
     "r--",
-    linewidth=2
+    linewidth=2,
+    label="Ideal Prediction"
 )
 
 ax.set_xlabel("Actual Price")
 ax.set_ylabel("Predicted Price")
-ax.set_title("Model Predictions")
+ax.set_title("Actual vs Predicted House Prices")
+ax.legend()
 
 st.pyplot(fig)
 
-# ----------------------------
-# About
-# ----------------------------
 st.divider()
 
-st.subheader("ℹ️ About")
+# --------------------------------------------------
+# About
+# --------------------------------------------------
+st.subheader("ℹ️ About This Project")
 
 st.markdown("""
-- **Dataset:** California Housing Dataset
-- **Model:** Linear Regression
-- **Library:** Scikit-learn
-- **Frontend:** Streamlit
+### Technologies Used
+
+- 🐍 Python
+- 📊 Pandas
+- 🔢 NumPy
+- 🤖 Scikit-learn
+- 🌐 Streamlit
+- 💾 Joblib
+
+### Dataset
+
+California Housing Dataset from **Scikit-learn**.
+
+### Model
+
+Linear Regression
+
+This application predicts California house prices based on eight housing features.
 """)
